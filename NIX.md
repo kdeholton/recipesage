@@ -16,8 +16,12 @@ with the production settings from
 | `queue-worker`        | `recipesage-queue-worker` (optional; the self-host API already runs jobs)   |
 | `grocery-categorizer` | `packages.grocery-categorizer` (optional; uses the public API by default)   |
 | `frontend`            | `packages.recipesage-frontend` (static files)                               |
-| `www`                 | `packages.recipesage-www` (static files, optional)                          |
+| `www`                 | not packaged (see below); `/` redirects to `/app/` like the self-host proxy |
 | `proxy`               | nginx                                                                       |
+
+The `www` marketing site isn't packaged. Its astro build downloads and
+resizes images from static.recipesage.com, which the Nix sandbox doesn't
+allow, and the self-host stack doesn't serve it either.
 
 The upstream source comes from the `recipesage-src` flake input, pinned to
 `v4.1.6`.
@@ -86,7 +90,6 @@ services.recipesage = {
   disableRegistration = true;
   mediaDir = "/srv/recipesage-media";
   queueWorker.enable = true;          # separate worker, like compose's queue-worker
-  www.enable = true;                  # serve the marketing site at /
   database.createLocally = false;     # then put DATABASE_URL in environmentFile
   groceryCategorizer = {
     enable = true;                    # needs AVX and about 1 GB of RAM
@@ -127,7 +130,6 @@ nix run github:kdeholton/recipesage/<branch>#stack
 ```sh
 nix build .#recipesage-server     # API, queue worker, CLI and prisma wrappers in result/bin
 nix build .#recipesage-frontend   # static web app
-nix build .#recipesage-www        # static marketing site
 nix build .#pushpin
 nix build .#grocery-categorizer
 nix develop                       # node 26, pnpm 10, postgres, valkey, pushpin, ...

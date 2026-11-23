@@ -11,7 +11,7 @@
 #   grocery-categorizer  -> systemd.services.recipesage-grocery-categorizer
 #                           (optional; uses the public API by default)
 #   frontend             -> static files served by nginx
-#   www                  -> static files served by nginx (optional)
+#   www                  -> not packaged (marketing site; `/` redirects to /app/)
 #   proxy                -> services.nginx virtual host
 #
 # The settings follow upstream's self-host stack
@@ -340,24 +340,6 @@ in
       };
     };
 
-    www = {
-      enable = mkOption {
-        type = types.bool;
-        default = false;
-        description = ''
-          Serve the RecipeSage marketing site (the `www` compose service) at
-          `/`. When disabled, `/` redirects to the app at `/app/`, like the
-          self-host proxy.
-        '';
-      };
-      package = mkOption {
-        type = types.package;
-        default = defaultPkgs.recipesage-www;
-        defaultText = literalExpression "recipesage.packages.\${system}.recipesage-www";
-        description = "Static marketing site files.";
-      };
-    };
-
     nginx = {
       enable = mkOption {
         type = types.bool;
@@ -557,20 +539,10 @@ in
             extraConfig = "add_header Cache-Control no-cache;";
           };
         }
-        // (
-          if cfg.www.enable then
-            {
-              "/" = {
-                root = cfg.www.package;
-                tryFiles = "$uri $uri/ $uri.html =404";
-              };
-            }
-          else
-            {
-              # PWA share_target sends users to "/" with query params; keep them.
-              "= /".return = "301 /app/$is_args$args";
-            }
-        );
+        // {
+          # PWA share_target sends users to "/" with query params; keep them.
+          "= /".return = "301 /app/$is_args$args";
+        };
       };
     };
   };

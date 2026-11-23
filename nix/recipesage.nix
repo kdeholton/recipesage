@@ -3,9 +3,12 @@
 # Mirrors what the upstream Dockerfiles do:
 #   - production.Dockerfile  -> `server`   (backend, queue-worker, cli)
 #   - frontend selfhost build -> `frontend` (static Angular/Ionic PWA)
-#   - packages/www (astro)    -> `www`      (static marketing site)
 #
-# All three share a single fixed-output pnpm store (`pnpmDeps`).
+# packages/www (the marketing site) is not packaged: its astro build downloads
+# and resizes images from static.recipesage.com, which the Nix sandbox forbids,
+# and the self-host stack does not serve it either.
+#
+# Both share a single fixed-output pnpm store (`pnpmDeps`).
 {
   lib,
   stdenv,
@@ -201,35 +204,11 @@ let
     };
   };
 
-  www = mkPnpmBuild {
-    pname = "recipesage-www";
-
-    buildPhase = ''
-      runHook preBuild
-      export PATH=$PWD/node_modules/.bin:$PATH
-      (cd packages/www && astro build)
-      runHook postBuild
-    '';
-
-    installPhase = ''
-      runHook preInstall
-      cp -r packages/www/dist $out
-      runHook postInstall
-    '';
-
-    meta = {
-      description = "RecipeSage marketing site (static files)";
-      homepage = "https://github.com/julianpoy/recipesage";
-      license = lib.licenses.agpl3Only;
-      platforms = lib.platforms.all;
-    };
-  };
 in
 {
   inherit
     server
     frontend
-    www
     pnpmDeps
     ;
 }

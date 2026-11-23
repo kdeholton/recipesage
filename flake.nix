@@ -47,7 +47,6 @@
         {
           recipesage-server = rs.server;
           recipesage-frontend = rs.frontend;
-          recipesage-www = rs.www;
           inherit pushpin grocery-categorizer;
 
           # Whole stack as local processes: `nix run .#stack`

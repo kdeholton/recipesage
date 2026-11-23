@@ -83,7 +83,6 @@ let
 
   processes = (formats.yaml { }).generate "process-compose.yaml" {
     version = "0.5";
-    log_location = "\${RECIPESAGE_DATA}/logs/process-compose.log";
     processes = {
       postgres = {
         command = "${pg}/bin/postgres -D \"$RECIPESAGE_DATA/postgres\" -k \"$RECIPESAGE_DATA/run\" -c listen_addresses=127.0.0.1 -c port=$RS_POSTGRES_PORT -c wal_level=logical";
@@ -189,9 +188,11 @@ writeShellApplication {
     export AI_MODEL_ASSISTANT_LOW="''${AI_MODEL_ASSISTANT_LOW:-google/gemini-2.5-flash}"
 
     # Render configs that need runtime values.
-    mkdir -p /tmp/recipesage-pushpin
+    # pushpin's IPC socket paths must stay short (unix socket path limit).
+    pushpin_run="''${XDG_RUNTIME_DIR:-/tmp}/recipesage-pushpin-$(id -u)"
+    mkdir -p "$pushpin_run"
     sed -e "s|@GRIP_KEY@|$GRIP_KEY|" \
-        -e "s|^rundir=.*|rundir=/tmp/recipesage-pushpin|" \
+        -e "s|^rundir=.*|rundir=$pushpin_run|" \
         -e "s|^routesfile=.*|routesfile=$RECIPESAGE_DATA/run/pushpin-routes|" \
         ${pushpinConf} > "$RECIPESAGE_DATA/run/pushpin.conf"
     echo "* 127.0.0.1:3000,over_http" > "$RECIPESAGE_DATA/run/pushpin-routes"
