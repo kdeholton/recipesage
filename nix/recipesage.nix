@@ -122,9 +122,9 @@ let
       app=$out/lib/recipesage
       mkdir -p $app $out/bin
 
-      # Production-only node_modules for the esbuild externals and prisma CLI.
-      rm -rf node_modules
-      pnpm install --offline --prod --ignore-scripts --frozen-lockfile
+      # Keep the full node_modules, like production.Dockerfile does: the
+      # bundles require some devDependencies (e.g. @faker-js/faker) at runtime.
+      rm -rf node_modules/.cache
 
       cp -r dist node_modules package.json prisma.config.ts fonts LICENSE.md $app/
       mkdir -p $app/packages/prisma/src $app/packages/frontend/src/assets
