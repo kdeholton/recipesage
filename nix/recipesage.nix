@@ -88,6 +88,10 @@ let
             patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" \
               --set-rpath ${lib.makeLibraryPath [ stdenv.cc.libc ]} "$f"
           done
+
+          # The postinstall script (prisma generate) was skipped; the backend
+          # bundles and the frontend's types both need the generated client.
+          pnpm exec prisma generate
         '';
       }
       // removeAttrs args [
@@ -106,9 +110,6 @@ let
 
     buildPhase = ''
       runHook preBuild
-
-      # Prisma must be generated since the postinstall script was skipped.
-      pnpm exec prisma generate
 
       pnpm exec nx run-many -t build -p backend,queue-worker,cli \
         --parallel=1 --output-style=static
