@@ -31,7 +31,7 @@ The upstream source comes from the `recipesage-src` flake input, pinned to
 ```nix
 # flake.nix of your NixOS host
 {
-  inputs.recipesage.url = "github:kdeholton/recipesage/<branch>";
+  inputs.recipesage.url = "github:kdeholton/recipesage";
 
   outputs = { nixpkgs, recipesage, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
@@ -112,7 +112,7 @@ This runs the whole stack as an unprivileged user, supervised by
 process-compose. It doesn't need NixOS, root or docker:
 
 ```sh
-nix run github:kdeholton/recipesage/<branch>#stack
+nix run github:kdeholton/recipesage#stack
 # → http://localhost:8080/
 ```
 
