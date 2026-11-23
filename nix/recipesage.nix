@@ -18,7 +18,6 @@
   fetchPnpmDeps,
   pnpmConfigHook,
   makeWrapper,
-  autoPatchelfHook,
   prisma-engines_7,
   openssl,
   mdbtools,
@@ -54,6 +53,8 @@ let
     NX_NO_CLOUD = "true";
     NX_SKIP_NX_CACHE = "true";
     NX_TUI = "false";
+    # nx's run-commands executor wants a pseudo terminal, which the sandbox lacks.
+    NX_NATIVE_COMMAND_RUNNER = "false";
     NX_ISOLATE_PLUGINS = "false";
     NG_CLI_ANALYTICS = "false";
     ASTRO_TELEMETRY_DISABLED = "1";
@@ -80,6 +81,14 @@ let
         env = commonEnv // (args.env or { });
         # Everything here is JS/static assets; nothing to strip.
         dontStrip = true;
+        # sass-embedded ships a prebuilt Dart VM that expects /lib64/ld-linux.
+        preBuild = ''
+          for f in node_modules/.pnpm/sass-embedded-linux-*/node_modules/sass-embedded-linux-*/dart-sass/src/dart; do
+            [ -e "$f" ] || continue
+            patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" \
+              --set-rpath ${lib.makeLibraryPath [ stdenv.cc.libc ]} "$f"
+          done
+        '';
       }
       // removeAttrs args [
         "nativeBuildInputs"
@@ -90,14 +99,10 @@ let
   server = mkPnpmBuild {
     pname = "recipesage-server";
 
-    nativeBuildInputs = [
-      makeWrapper
-      autoPatchelfHook
-    ];
-    # sharp ships prebuilt libvips binaries that need libstdc++.
-    buildInputs = [ stdenv.cc.cc.lib ];
-    # Prebuilt binaries for other libcs/arches that pnpm may still pull in.
-    autoPatchelfIgnoreMissingDeps = [ "libc.musl-*.so.1" ];
+    nativeBuildInputs = [ makeWrapper ];
+    # Note: no autoPatchelf. sharp's prebuilt libvips segfaults once patchelf
+    # rewrites it, and it doesn't need patching anyway: it only links glibc,
+    # libstdc++ and libgcc_s, which the nix-built node has already loaded.
 
     buildPhase = ''
       runHook preBuild
@@ -168,7 +173,14 @@ let
 
     buildPhase = ''
       runHook preBuild
-      pnpm exec nx run frontend:build:selfhost --output-style=static
+      # Steps of the `frontend:build:selfhost` nx target, run directly.
+      export PATH=$PWD/node_modules/.bin:$PATH
+      pushd packages/frontend
+      tsx build-service-worker.ts
+      ng build --configuration=selfhost
+      workbox injectManifest
+      cp ../../LICENSE.md www/LICENSE.md
+      popd
       runHook postBuild
     '';
 
@@ -193,7 +205,8 @@ let
 
     buildPhase = ''
       runHook preBuild
-      pnpm exec nx run www:build --exclude-task-dependencies --output-style=static
+      export PATH=$PWD/node_modules/.bin:$PATH
+      (cd packages/www && astro build)
       runHook postBuild
     '';
 
